@@ -1,3 +1,10 @@
+0.5.0 / 2017-12-21
+==================
+  * Update api version to 6.0
+  * Update elasticsearch lib
+  * Take into account breaking changes https://www.elastic.co/guide/en/elasticsearch/reference/6.0/breaking-changes-6.0.html
+
+
 0.3.6 / 2016-11-27
 ==================
   * Update api version to 5.0

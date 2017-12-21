@@ -30,13 +30,13 @@ function typeAsType(){
 function types(){
   return {
     string: String,
-    stringString: 'string',
+    stringString: 'text',
     stringArray: [String],
-    stringArrayString: ['string'],
+    stringArrayString: ['text'],
     stringObj: { type: String },
     stringObjArray: { type: [String] },
-    stringObjArrayString: { type: ['string'] },
-    stringObjString: { type: 'string' },
+    stringObjArrayString: { type: ['text'] },
+    stringObjString: { type: 'text' },
 
     date: Date,
     dateString: 'date',
