@@ -4,7 +4,9 @@
   "description": "Like Mongoose but for Elasticsearch. Define models, preform CRUD operations, and build advanced search queries.",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha --check-leaks ./tests/**.js"
+    "test": "./node_modules/.bin/mocha --check-leaks ./tests/**.js",
+    "snyk-protect": "snyk protect",
+    "prepublish": "npm run snyk-protect"
   },
   "repository": {
     "type": "git",
@@ -42,12 +44,14 @@
     "kareem": "^1.0.1",
     "lodash": "^4.13.1",
     "pluralize": "^3.0.0",
-    "winston": "^2.2.0"
+    "winston": "^2.2.0",
+    "snyk": "^1.192.4"
   },
   "devDependencies": {
     "benchmark": "^2.1.0",
     "mocha": "^2.3.0",
     "require-new": "^1.1.0",
     "should": "^9.0.2"
-  }
+  },
+  "snyk": true
 }
