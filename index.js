@@ -1,6 +1,6 @@
 'use strict';
 
-var logger = require('./lib/logger'),
+let logger = require('./lib/logger'),
   Client = require('./lib/client'),
   Schema = require('./lib/schema'),
   errors = require('./lib/errors'),
@@ -16,26 +16,39 @@ var logger = require('./lib/logger'),
 
 logger.transports.console.silent = (process.env.NODE_ENV !== 'development');
 
-var db = {
+let db = {
   host: 'localhost:9200',
   index: '',
   logging: process.env.NODE_ENV === 'development',
   client: {},
-  models: {}
+  models: {},
+  trace: false
 };
 
-var CONNECTED = false;
+let CONNECTED = false;
 
-var mappingQueue = [];
-var handleMappingQueue = function () {
+let mappingQueue = [];
+let handleMappingQueue = function () {
   if (!mappingQueue.length) return Promise.resolve();
   return Promise.map(mappingQueue, function (v) {
-    return db.client.indices.putMapping({
-      index: db.index,
-      type: v.type,
-      ignore_conflicts: true,
-      body: v.mapping
-    });
+    let index = db.index + '-' + v.type
+    return db.client.indices.exists({ index: index }).then(function (result) {
+      if (result) {
+        return Promise.resolve();
+      } else {
+        // if the index doesn't exist, then create it.
+        return createIndex(index, db.options)
+      }
+    }).then(function () {
+      return db.client.indices.putMapping({
+        index: index,
+        type: '_doc',
+        include_type_name: true,
+        // ES 5.x : obsolete : https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-put-mapping.html
+        // ignore_conflicts: true,
+        body: v.mapping
+      });
+    })
   });
 };
 
@@ -54,7 +67,7 @@ function connect(options) {
 
   module.exports.client = db.client = Client.makeClient(db);
 
-  return db.client.indices.exists({index: db.index}).then(function (result) {
+  return db.client.indices.exists({ index: db.index }).then(function (result) {
     //No error - connected
     CONNECTED = true;
 
@@ -85,7 +98,7 @@ function isConnected() {
 function status(type) {
   if (!isConnected()) return Promise.reject(new ConnectionError(db.host));
 
-  var args = {index: db.index};
+  let args = { index: db.index };
   if (type) args.type = type;
   return db.client.indices.status(args);
 }
@@ -94,7 +107,7 @@ function createIndex(index, mappings) {
   if (!index) return Promise.reject(new MissingArgumentError('index'));
   if (!isConnected()) return Promise.reject(new ConnectionError(db.host));
 
-  var mergedMapping = _.defaultsDeep(mappings, defaultMappings);
+  let mergedMapping = _.defaultsDeep(mappings, defaultMappings);
   return db.client.indices.create({
     index: index,
     body: mergedMapping
@@ -105,7 +118,7 @@ function removeIndex(index) {
   if (!index) return Promise.reject(new MissingArgumentError('index'));
   if (!isConnected()) return Promise.reject(new ConnectionError(db.host));
 
-  return db.client.indices.delete({index: index}).catch(function () {
+  return db.client.indices.delete({ index: index }).catch(function () {
   });
 }
 
@@ -126,7 +139,7 @@ function model(modelName, schema) {
 
   // create a neweable function object.
   function modelInstance(data) {
-    var self = this;
+    let self = this;
     // Add any user supplied schema instance methods.
     if (schema) {
       _.assign(self, schema.methods);
@@ -156,8 +169,8 @@ function model(modelName, schema) {
     if (schema.options.type) modelInstance.model.type = schema.options.type;
 
     // Update the mapping asynchronously.
-    var mapping = {};
-    mapping[modelInstance.model.type] = schema.toMapping();
+    let mapping = {};
+    mapping = schema.toMapping();
 
     // If we're not currently connected, push the mapping update call to the queue.'
     if (isConnected()) {
@@ -166,14 +179,16 @@ function model(modelName, schema) {
       // return
       db.client.indices.putMapping({
         index: db.index,
-        type: modelInstance.model.type,
-        ignore_conflicts: true,
+        type: '_doc',
+        include_type_name: true,
+        // ES 5.x : obsolete : https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-put-mapping.html
+        // ignore_conflicts: true,
         body: mapping
       });
       //TODO : setup promise or sync call to putMapping to avoid an error if an insertion comes just after
       return db.models[modelName] = modelInstance;
     } else {
-      mappingQueue.push({type: modelInstance.model.type, mapping: mapping});
+      mappingQueue.push({ type: modelInstance.model.type, mapping: mapping });
     }
   }
 
@@ -182,7 +197,7 @@ function model(modelName, schema) {
 
 function stats() {
   if (!isConnected()) return Promise.reject(new ConnectionError(db.host));
-  return db.client.indices.stats({index: db.index});
+  return db.client.indices.stats({ index: db.index });
 }
 
 module.exports = {
